@@ -10,7 +10,6 @@ import (
 	"strings"
 )
 
-const MAX_TIME = 12*60
 type Point struct {
 	x float64
 	y float64
@@ -36,6 +35,8 @@ type Saving struct {
 	load2Id int
 	savedDistance float64
 }
+
+const MAX_TIME = 12*60
 
 var loadMap = make(map[int]*Load)
 var savings = make([]Saving, 0)
@@ -88,7 +89,7 @@ func parseLoadData(filePath string)  {
 
 		id, _ := strconv.Atoi(items[0])
 		// Process coordinates in the form of "(-42.51051149928979,-116.19788220835095) (-69.06284568487868,-44.12633704833111)"
-		start := strings.Split(items[1][1 : len(items[1])-1], ",")
+		start := strings.Split(items[1][1 : len(items[1])-1], ",") // Remove the parentheses and split by comma
 		startX, _ := strconv.ParseFloat(start[0], 64)
 		startY, _ := strconv.ParseFloat(start[1], 64)
 		startPoint := Point{x: startX, y: startY}
@@ -139,15 +140,10 @@ func generateSavingsList() {
 	sort.Slice(savings, func(i, j int) bool {
 		return savings[i].savedDistance > savings[j].savedDistance
 	})
-
-	// fmt.Println("Savings list:")
-	// for _, saving := range savings {
-	// 	fmt.Println(saving)
-	// }
 }
 
 func processSavingsList() {
-	// Clark and Wright savings algorithm
+	// Clark and Wright algorithm
 	for _, saving := range savings {
 		load1 := loadMap[saving.load1Id]
 		load2 := loadMap[saving.load2Id]
@@ -239,7 +235,6 @@ func processSavingsList() {
 	// Assign remaining unassigned loads to new trucks
 	for _, load := range loadMap {
 		if load.truck == nil {
-			// fmt.Printf("FOUND ONE")
 			truck := &Truck{
 				time: load.depotToStart + load.loadDistance + load.depotToEnd,
 				loads: []*Load{load},
