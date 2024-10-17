@@ -40,6 +40,7 @@ type Saving struct {
 var loadMap = make(map[int]*Load)
 var savings = make([]Saving, 0)
 var depot = Point{x: 0, y: 0}
+var trucks = make([]*Truck, 0)
 
 func main() {
 	args := os.Args
@@ -62,6 +63,26 @@ func findLoadIndex(loads []*Load, load *Load) int {
 			}
 	}
 	return -1 // Not found
+}
+
+func findTruckIndex(trucks []*Truck, truck *Truck) int {
+	for i, current := range trucks {
+			if current == truck {
+					return i
+			}
+	}
+	return -1 // Not found
+}
+
+func deleteTruck(trucks []*Truck, truck *Truck) {
+	for i, current := range trucks {
+			if truck == current {
+					// Slice manipulation to remove the element
+					trucks[i] = nil
+					trucks = append((trucks)[:i], (trucks)[i+1:]...)
+					return
+			}
+	}
 }
 
 func parseLoadData(filePath string)  {
@@ -110,7 +131,7 @@ func parseLoadData(filePath string)  {
 			depotToEnd: depotToEnd,
 		}
 		loadMap[id] = load
-		fmt.Println(load)
+		// fmt.Println(load)
 	}
 
 	// Check for errors during scanning
@@ -141,22 +162,22 @@ func generateSavingsList() {
 		return savings[i].savedDistance > savings[j].savedDistance
 	})
 
-	fmt.Println("Savings list:")
-	for _, saving := range savings {
-		fmt.Println(saving)
-	}
+	// fmt.Println("Savings list:")
+	// for _, saving := range savings {
+	// 	fmt.Println(saving)
+	// }
 }
 
 func processSavingsList() {
 	// Clark and Wright savings algorithm
-	trucks := make([]*Truck, 0)
+	// trucks := make([]*Truck, 0)
 	for _, saving := range savings {
 		load1 := loadMap[saving.load1Id]
 		load2 := loadMap[saving.load2Id]
 
 		if load1.truck == nil && load2.truck == nil  { // a. If both loads are unassigned to a truck
 
-			roundTripTime := load1.depotToStart + load1.loadDistance + load2.loadDistance + load2.depotToEnd + pointDistance(load1.end, load2.start)
+			roundTripTime := load1.depotToStart + load1.loadDistance + pointDistance(load1.end, load2.start) + load2.loadDistance + load2.depotToEnd
 
 			if roundTripTime <= MAX_TIME {
 				truck := &Truck{
@@ -220,17 +241,36 @@ func processSavingsList() {
 					// Check if adding load1 and load2 would exceed the maximum distance
 					roundTripTime :=
 					load1.truck.time - // current total running time for all loads on truck1
-					load1.depotToEnd + // subtract return leg home of load1
+					load1.depotToEnd + // subtract return leg home of truck1
 					pointDistance(load1.end, load2.start) + // add gap from load1 end to load2 start
-					load2.loadDistance - // add load2 distance
-					load2.depotToStart + // subtract initial leg of load2
-					load2.truck.time // add current total running time for all loads on truck2
+					load2.truck.time - // current total running time for all loads on truck2
+					load2.depotToStart // subtract initial leg of truck2
+
+					// load2.loadDistance - // add load2 distance
+					// load2.depotToStart + // subtract initial leg of truck2
+					// load2.truck.time // add current total running time for all loads on truck2
 
 					if roundTripTime <= MAX_TIME {
+						// fmt.Printf("Merging truck1 with load: %v and truck2 with load: %v\n", load1.truck.loads[load1Index].id, load2.truck.loads[load2Index].id)
 						load1.truck.time = roundTripTime
-						load1.truck.loads = append(load1.truck.loads, load2.truck.loads...)
-						load2.truck = load1.truck
+						for _, load := range load2.truck.loads {
+							load.truck = load1.truck
+						}
+						// load1.truck.loads = append(load1.truck.loads, load2.truck.loads...)
+
+
+
+						// Delete truck2 from truck list
+						// trucks = append(trucks[:findTruckIndex(trucks, load2.truck)], trucks[findTruckIndex(trucks, load2.truck)+1:]...)
+
+
+
+						// load2.truck = load1.truck
 						// TODO: remove empty truck2 if it messes up printing
+						// fmt.Println("Deleting a truck	from the list")
+						// fmt.Println("Original truck list: %v", trucks)
+						// deleteTruck(trucks, load2.truck)
+						// fmt.Println("New truck list: %v", trucks)
 					}
 
 				}
@@ -242,6 +282,7 @@ func processSavingsList() {
 	// Assign remaining unassigned loads to new trucks
 	for _, load := range loadMap {
 		if load.truck == nil {
+			// fmt.Printf("FOUND ONE")
 			truck := &Truck{
 				time: load.depotToStart + load.loadDistance + load.depotToEnd,
 				loads: []*Load{load},
@@ -251,13 +292,22 @@ func processSavingsList() {
 		}
 	}
 
-	fmt.Println("Trucks and their loads:")
-	fmt.Println("Max time: ", MAX_TIME)
+	// fmt.Println("Trucks and their loads:")
+	// fmt.Println("Max time: ", MAX_TIME)
 	for _, truck := range trucks {
-		fmt.Printf("Truck with total time %.2f has loads: ", truck.time)
-		for _, load := range truck.loads {
-			fmt.Printf("%d ", load.id)
+		// if truck.loads == nil {
+		// 	continue
+		// }
+		// fmt.Printf("Truck with total time %.2f has loads: ", truck.time)
+		fmt.Print("[")
+		for i, load := range truck.loads {
+			if i == len(truck.loads) - 1 {
+				fmt.Printf("%d", load.id)
+			} else {
+				fmt.Printf("%d,", load.id)
+			}
 		}
+		fmt.Print("]")
 		fmt.Println()
 	}
 }
