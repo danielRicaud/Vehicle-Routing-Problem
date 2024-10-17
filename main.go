@@ -65,26 +65,6 @@ func findLoadIndex(loads []*Load, load *Load) int {
 	return -1 // Not found
 }
 
-func findTruckIndex(trucks []*Truck, truck *Truck) int {
-	for i, current := range trucks {
-			if current == truck {
-					return i
-			}
-	}
-	return -1 // Not found
-}
-
-func deleteTruck(trucks []*Truck, truck *Truck) {
-	for i, current := range trucks {
-			if truck == current {
-					// Slice manipulation to remove the element
-					trucks[i] = nil
-					trucks = append((trucks)[:i], (trucks)[i+1:]...)
-					return
-			}
-	}
-}
-
 func parseLoadData(filePath string)  {
 	// Open the file
 	file, err := os.Open(filePath)
@@ -97,7 +77,7 @@ func parseLoadData(filePath string)  {
 	// Create a scanner to read the file line by line
 	scanner := bufio.NewScanner(file)
 
-	// Add each load to the loadMap so they can be referenced by loadNumber, format coordinates into Point structs
+	// Read the file line by line
 	for scanner.Scan() {
 		line := scanner.Text()
 		items := strings.Split(line, " ")
@@ -131,7 +111,6 @@ func parseLoadData(filePath string)  {
 			depotToEnd: depotToEnd,
 		}
 		loadMap[id] = load
-		// fmt.Println(load)
 	}
 
 	// Check for errors during scanning
@@ -149,7 +128,6 @@ func generateSavingsList() {
 				saving := Saving{
 					load1Id: i,
 					load2Id: j,
-					// Distance(depot, load1end) + Distance(depot, load2start) - Distance(load1end, load2start)
 					savedDistance: loadMap[i].depotToEnd + loadMap[j].depotToStart - pointDistance(loadMap[i].end, loadMap[j].start),
 				}
 				savings = append(savings, saving)
@@ -170,7 +148,6 @@ func generateSavingsList() {
 
 func processSavingsList() {
 	// Clark and Wright savings algorithm
-	// trucks := make([]*Truck, 0)
 	for _, saving := range savings {
 		load1 := loadMap[saving.load1Id]
 		load2 := loadMap[saving.load2Id]
@@ -238,7 +215,7 @@ func processSavingsList() {
 
 				// Ensure that load1 and load2 are not interior load nodes
 				if load1Index == (len(load1.truck.loads) - 1) && load2Index == 0 { // load1 is last, and load2 is first
-					// Check if adding load1 and load2 would exceed the maximum distance
+					// Check if linking load1 and load2 together would exceed the maximum time
 					roundTripTime :=
 					load1.truck.time - // current total running time for all loads on truck1
 					load1.depotToEnd + // subtract return leg home of truck1
@@ -246,31 +223,11 @@ func processSavingsList() {
 					load2.truck.time - // current total running time for all loads on truck2
 					load2.depotToStart // subtract initial leg of truck2
 
-					// load2.loadDistance - // add load2 distance
-					// load2.depotToStart + // subtract initial leg of truck2
-					// load2.truck.time // add current total running time for all loads on truck2
-
 					if roundTripTime <= MAX_TIME {
-						// fmt.Printf("Merging truck1 with load: %v and truck2 with load: %v\n", load1.truck.loads[load1Index].id, load2.truck.loads[load2Index].id)
 						load1.truck.time = roundTripTime
 						for _, load := range load2.truck.loads {
 							load.truck = load1.truck
 						}
-						// load1.truck.loads = append(load1.truck.loads, load2.truck.loads...)
-
-
-
-						// Delete truck2 from truck list
-						// trucks = append(trucks[:findTruckIndex(trucks, load2.truck)], trucks[findTruckIndex(trucks, load2.truck)+1:]...)
-
-
-
-						// load2.truck = load1.truck
-						// TODO: remove empty truck2 if it messes up printing
-						// fmt.Println("Deleting a truck	from the list")
-						// fmt.Println("Original truck list: %v", trucks)
-						// deleteTruck(trucks, load2.truck)
-						// fmt.Println("New truck list: %v", trucks)
 					}
 
 				}
@@ -292,13 +249,8 @@ func processSavingsList() {
 		}
 	}
 
-	// fmt.Println("Trucks and their loads:")
-	// fmt.Println("Max time: ", MAX_TIME)
+	// Print the results
 	for _, truck := range trucks {
-		// if truck.loads == nil {
-		// 	continue
-		// }
-		// fmt.Printf("Truck with total time %.2f has loads: ", truck.time)
 		fmt.Print("[")
 		for i, load := range truck.loads {
 			if i == len(truck.loads) - 1 {
